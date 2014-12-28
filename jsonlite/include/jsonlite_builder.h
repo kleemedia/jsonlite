@@ -1,5 +1,5 @@
 //
-//  Copyright 2012-2013, Andrii Mamchur
+//  Copyright 2012-2014, Andrii Mamchur
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -26,36 +26,29 @@ extern "C" {
     
     struct jsonlite_builder_struct;
     typedef struct jsonlite_builder_struct* jsonlite_builder;
+    typedef uint16_t jsonlite_write_state;
+    typedef struct jsonlite_builder_struct {
+        jsonlite_write_state *state;
+        jsonlite_write_state *limit;
+        jsonlite_write_state *stack;
+        jsonlite_stream stream;
+        
+        size_t indentation;
+        char doubleFormat[8];
+    } jsonlite_builder_struct;
 
-    /** @brief Creates and initializes new instance of builder object.
-     *
-     * You should release jsonlite_builder object using ::jsonlite_builder_release.
-     * @see jsonlite_builder
-     * @see jsonlite_builder_release
-     * @param depth the builder depth
-     * @return jsonlite_builder object
-     */
-    jsonlite_builder jsonlite_builder_init(size_t depth, jsonlite_stream stream);
+    #define jsonlite_builder_estimate_size(depth) (sizeof(jsonlite_builder_struct) + (depth) * sizeof(jsonlite_write_state))
     
-    /** \brief Releases builder object.
-     *
-     * If builder is NULL, jsonlite_builder_release does nothing.
-     * @see jsonlite_builder
-     * @see jsonlite_result
-     * @param builder the builder object
-     * @return jsonlite_result_invalid_argument when builder is NULL; otherwise jsonlite_result_ok.
-     */
-    jsonlite_result jsonlite_builder_release(jsonlite_builder builder);
-       
+    jsonlite_builder jsonlite_builder_init(void *memory, size_t size, jsonlite_stream stream);
+    
     /** \brief Sets beautify indentation. Default is 0.
      *
      * @see jsonlite_builder
      * @see jsonlite_result
      * @param builder the builder object
      * @param indentation the beautify indentation; 0 - disabled
-     * @return jsonlite_result_invalid_argument when builder is NULL; otherwise jsonlite_result_ok.
      */
-    jsonlite_result jsonlite_builder_set_indentation(jsonlite_builder builder, size_t indentation);
+    void jsonlite_builder_set_indentation(jsonlite_builder builder, size_t indentation);
     
     /** \brief Sets format for double values. Default is "%.16g".
      *
@@ -64,17 +57,15 @@ extern "C" {
      * @see jsonlite_result
      * @param builder the builder object
      * @param format the double format; see sprintf function for details
-     * @return jsonlite_result_invalid_argument when builder or format are NULL; otherwise jsonlite_result_ok.
      */
-    jsonlite_result jsonlite_builder_set_double_format(jsonlite_builder builder, const char *format);
+    void jsonlite_builder_set_double_format(jsonlite_builder builder, const char *format);
     
     /** \brief Begin JSON object.
      *
      * @see jsonlite_builder
      * @see jsonlite_result
      * @param builder the builder object
-     * @return jsonlite_result_invalid_argument when builder is NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_object_begin(jsonlite_builder builder);
@@ -84,8 +75,7 @@ extern "C" {
      * @see jsonlite_builder
      * @see jsonlite_result
      * @param builder the builder object
-     * @return jsonlite_result_invalid_argument when builder is NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_object_end(jsonlite_builder builder);
@@ -95,8 +85,7 @@ extern "C" {
      * @see jsonlite_builder
      * @see jsonlite_result
      * @param builder the builder object
-     * @return jsonlite_result_invalid_argument when builder is NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_array_begin(jsonlite_builder builder);
@@ -106,8 +95,7 @@ extern "C" {
      * @see jsonlite_builder
      * @see jsonlite_result
      * @param builder the builder object
-     * @return jsonlite_result_invalid_argument when builder is NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_array_end(jsonlite_builder builder);
@@ -121,8 +109,7 @@ extern "C" {
      * @param builder the builder object
      * @param data the UTF-8 encoded string
      * @param length the string length
-     * @return jsonlite_result_invalid_argument when builder or data are NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_key(jsonlite_builder builder, const char *data, size_t length);
@@ -136,8 +123,7 @@ extern "C" {
      * @param builder the builder object
      * @param data the UTF-8 encoded string
      * @param length the string length
-     * @return jsonlite_result_invalid_argument when builder or data are NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_string(jsonlite_builder builder, const char *data, size_t length);
@@ -148,8 +134,7 @@ extern "C" {
      * @see jsonlite_result
      * @param builder the builder object
      * @param value the integer value
-     * @return jsonlite_result_invalid_argument when builder is NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_int(jsonlite_builder builder, long long value);
@@ -160,8 +145,7 @@ extern "C" {
      * @see jsonlite_result
      * @param builder the builder object
      * @param value the double value
-     * @return jsonlite_result_invalid_argument when builder is NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_double(jsonlite_builder builder, double value);
@@ -171,8 +155,7 @@ extern "C" {
      * @see jsonlite_builder
      * @see jsonlite_result
      * @param builder the builder object
-     * @return jsonlite_result_invalid_argument when builder is NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_true(jsonlite_builder builder);
@@ -182,8 +165,7 @@ extern "C" {
      * @see jsonlite_builder
      * @see jsonlite_result
      * @param builder the builder object
-     * @return jsonlite_result_invalid_argument when builder is NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_false(jsonlite_builder builder);
@@ -193,8 +175,7 @@ extern "C" {
      * @see jsonlite_builder
      * @see jsonlite_result
      * @param builder the builder object
-     * @return jsonlite_result_invalid_argument when builder is NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_null(jsonlite_builder builder);
@@ -209,8 +190,7 @@ extern "C" {
      * @param builder the builder object
      * @param data the raw data
      * @param length the data length
-     * @return jsonlite_result_invalid_argument when builder or data are NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_raw_key(jsonlite_builder builder, const void *data, size_t length);
@@ -225,8 +205,7 @@ extern "C" {
      * @param builder the builder object
      * @param data the raw data
      * @param length the data length
-     * @return jsonlite_result_invalid_argument when builder or data are NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_raw_string(jsonlite_builder builder, const void *data, size_t length);
@@ -240,8 +219,7 @@ extern "C" {
      * @param builder the builder object
      * @param data the raw data
      * @param length the data length
-     * @return jsonlite_result_invalid_argument when builder or data are NULL;
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_builder_raw_value(jsonlite_builder builder, const void *data, size_t length);

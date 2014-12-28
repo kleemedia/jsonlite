@@ -1,4 +1,4 @@
-//  Copyright 2012-2013, Andrii Mamchur
+//  Copyright 2012-2014, Andrii Mamchur
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -33,16 +33,18 @@ struct JsonLiteAccumulatorState;
     id __unsafe_unretained *keys;
     id __unsafe_unretained *values;
     CFHashCode *hashes;
-    jsonlite_token_pool keyPool;
-    jsonlite_token_pool stringPool;
-    jsonlite_token_pool numberPool;
-    NSUInteger capacity;
+    
+    jsonlite_token_pool pools[3];
+    uint8_t pools_mem[jsonlite_token_pool_estimate_size(3)];
+
     struct {
         BOOL didAccumulateArray : 1;
         BOOL didAccumulateDictionary : 1;
     } flags;
     
     NSUInteger depth;
+    NSUInteger capacity;
+    
     id<JsonLiteAccumulatorDelegate> delegate;
 }
 
@@ -56,7 +58,5 @@ struct JsonLiteAccumulatorState;
 + (id)accumulatorWithDepth:(NSUInteger)depth;
 - (id)initWithDepth:(NSUInteger)depth;
 - (id)init;
-
-+ (id)objectFromData:(NSData *)data withMaxDepth:(NSUInteger)maxDepth;
 
 @end

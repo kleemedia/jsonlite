@@ -50,6 +50,7 @@
 @implementation JsonLiteObjCInputs
 
 - (void)testJsonLiteParserC {
+    char memory[jsonlite_parser_estimate_size(16)];
     char json[] = "{}";
     size_t json_size = sizeof(json) - 1;
     
@@ -58,81 +59,34 @@
     XCTAssertTrue(size > 0, @"Size can must be greater zero.");
     
     // jsonlite_parser_init
-    jsonlite_parser parser = jsonlite_parser_init(0);
-    XCTAssertTrue(parser != NULL, @"Parser is NULL");
-    jsonlite_parser_release(parser);
-    
-    parser = jsonlite_parser_init(16);
+    jsonlite_parser parser = jsonlite_parser_init(memory, sizeof(memory), jsonlite_null_buffer);
     XCTAssertTrue(parser != NULL, @"Parser is NULL");
     
     // jsonlite_parser_set_callback
-    jsonlite_result result = jsonlite_parser_set_callback(NULL, NULL);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
-    
-    result = jsonlite_parser_set_callback(NULL, &jsonlite_default_callbacks);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
-    
-    result = jsonlite_parser_set_callback(parser, NULL);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
-    
-    result = jsonlite_parser_set_callback(parser, &jsonlite_default_callbacks);
-    XCTAssertTrue(result == jsonlite_result_ok, @"Incorrect result");
+    jsonlite_result result;
+    jsonlite_parser_set_callback(parser, &jsonlite_default_callbacks);
     
     // jsonlite_parser_get_result
     result = jsonlite_parser_get_result(parser);
     XCTAssertTrue(result == jsonlite_result_unknown, @"Incorrect result");
     
-    result = jsonlite_parser_get_result(NULL);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
-    
-    // jsonlite_parser_resume
-    result = jsonlite_parser_resume(NULL);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
-    
     result = jsonlite_parser_resume(parser);
     XCTAssertTrue(result == jsonlite_result_not_allowed, @"Incorrect result");
-    
-    // jsonlite_parser_suspend
-    result = jsonlite_parser_suspend(NULL);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
     
     result = jsonlite_parser_suspend(parser);
     XCTAssertTrue(result == jsonlite_result_not_allowed, @"Incorrect result");
     
-    // jsonlite_parser_tokenize
-    result = jsonlite_parser_tokenize(NULL, NULL, 0);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
-    
-    result = jsonlite_parser_tokenize(NULL, NULL, json_size);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
-    
     result = jsonlite_parser_tokenize(parser, NULL, 0);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
-    
-    result = jsonlite_parser_tokenize(parser, NULL, json_size);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
-    
-    result = jsonlite_parser_tokenize(NULL, json, 0);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
-    
-    result = jsonlite_parser_tokenize(NULL, json, json_size);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
+    XCTAssertTrue(result == jsonlite_result_end_of_stream, @"Incorrect result");
     
     result = jsonlite_parser_tokenize(parser, json, 0);
-    XCTAssertTrue(result == jsonlite_result_invalid_argument, @"Incorrect result");
+    XCTAssertTrue(result == jsonlite_result_end_of_stream, @"Incorrect result");
     
     result = jsonlite_parser_tokenize(parser, json, json_size);
     XCTAssertTrue(result == jsonlite_result_ok, @"Incorrect result");
     
-    // jsonlite_parser_release
-    jsonlite_parser_release(parser);
-    jsonlite_parser_release(NULL);
-    
-    parser = jsonlite_parser_init_memory(NULL, 123);
-    XCTAssertTrue(parser == NULL, @"Parser in not NULL");
-    
     char mem[256];
-    parser = jsonlite_parser_init_memory(mem, 5);
+    parser = jsonlite_parser_init(mem, 5, jsonlite_null_buffer);
     XCTAssertTrue(parser == NULL, @"Parser in not NULL");
 }
 
@@ -148,8 +102,9 @@
     
     size_t size = jsonlite_token_size_of_uft8(&token);
     XCTAssertTrue(size == sizeof(str), @"Incorrect size - %zu", size);
-        
-    size = jsonlite_token_to_uft8(&token, &buffer);
+    
+    buffer = malloc(jsonlite_token_size_of_uft8(&token));
+    size = jsonlite_token_to_uft8(&token, buffer);
     XCTAssertTrue(buffer != NULL, @"Buffer is null");
     XCTAssertTrue(size == strlen((char *)str), @"Size is not zero");
     XCTAssertTrue(memcmp(str, buffer, sizeof(str)) == 0, @"String are not equal");
@@ -159,8 +114,9 @@
     
     size = jsonlite_token_size_of_uft16(&token);
     XCTAssertTrue(size == sizeof(str) * 2, @"Incorrect size - %zu", size);
-        
-    size = jsonlite_token_to_uft16(&token, &unicode);
+    
+    unicode = malloc(jsonlite_token_size_of_uft16(&token));
+    size = jsonlite_token_to_uft16(&token, unicode);
     XCTAssertTrue(unicode != NULL, @"Buffer is null");
     XCTAssertTrue(size == sizeof(str16) - sizeof(uint16_t), @"Size is not zero");
     XCTAssertTrue(memcmp(str16, unicode, sizeof(str16)) == 0, @"String are not equal");

@@ -1,4 +1,4 @@
-//  Copyright 2012-2013, Andrii Mamchur
+//  Copyright 2012-2014, Andrii Mamchur
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,5 +14,5 @@
 
 #import <Foundation/Foundation.h>
 
-id JsonLiteCreateDictionary(const id *values, const id *keys, const CFHashCode *hashes, NSUInteger count);
-id JsonLiteCreateArray(const id *objects, NSUInteger count);
+id CreateJsonLiteDictionary(const id *values, const id *keys, const CFHashCode *hashes, NSUInteger count);
+id CreateJsonLiteArray(const id *objects, NSUInteger count);

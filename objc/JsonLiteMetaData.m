@@ -1,4 +1,4 @@
-//  Copyright 2012-2013, Andrii Mamchur
+//  Copyright 2012-2014, Andrii Mamchur
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -80,21 +80,21 @@
 //    }
 //#endif
     if (value == nil || [value isKindOfClass:objectClass]) {
-        setterImp(obj, setterSelector, value);
+        [obj performSelector:setterSelector withObject:value];
     } else {
         NSLog(@"Invalid type mapping %@ != %@!", [value class], objectClass);
     }
 }
 
 - (id)valueOfObject:(id)obj {
-    return getterImp(obj, getterSelector);
+    return [obj performSelector:getterSelector];
 }
 
 - (const char *)takeAccessor:(const char *)p ofClass:(Class)cls {
     const char *start = p;
     const char *end = NULL;
     int run = 1;
-    while (*p && run) {
+    while (run && *p) {
         if (*p ==  ',') {
             end = p;
             run = 0;
@@ -108,7 +108,6 @@
                                            encoding:NSUTF8StringEncoding];
     
     getterSelector = NSSelectorFromString(str);
-    getterImp = class_getMethodImplementation(cls, getterSelector);
     [str release];
     
     return p;
@@ -116,14 +115,23 @@
 
 - (const char *)takeMutator:(const char *)p ofClass:(Class)cls {
     const char *start = p;
-    for (; *p !=  ','; p++);
+    const char *end = NULL;
+    int run = 1;
+    while (run && *p) {
+        if (*p ==  ':') {
+            end = ++p;
+            run = 0;
+        }
+        p++;
+    }
+    
+    end = end ? end : p;
     
     NSString *str = [[NSString alloc] initWithBytes:start
-                                             length:p - start
+                                             length:end - start
                                            encoding:NSUTF8StringEncoding];
     
     setterSelector = NSSelectorFromString(str);
-    setterImp = class_getMethodImplementation(cls, setterSelector);
     [str release];
     
     return p;
@@ -207,16 +215,15 @@
 }
 
 - (void)completeImplementationForClass:(Class)cls {
-    if (getterImp == NULL) {
+    if (getterSelector == NULL) {
         getterSelector = NSSelectorFromString(name);
-        getterImp = class_getMethodImplementation(cls, getterSelector);
     }
-    if (setterImp == NULL && !propertyFlags.readonlyAccess) {
+    
+    if (!propertyFlags.readonlyAccess && setterSelector == NULL) {
         NSString *str = [NSString stringWithFormat:@"set%@%@:",
                                 [[name substringToIndex:1] uppercaseString],
                                 [name substringFromIndex:1]];
         setterSelector = NSSelectorFromString(str);
-        setterImp = class_getMethodImplementation(cls, setterSelector);
     }
 }
 

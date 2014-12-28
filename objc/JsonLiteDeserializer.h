@@ -1,4 +1,4 @@
-//  Copyright 2012-2013, Andrii Mamchur
+//  Copyright 2012-2014, Andrii Mamchur
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -40,9 +40,9 @@
 @end
 
 @interface JsonLiteDeserializer : NSObject<JsonLiteParserDelegate> {
-    jsonlite_token_pool keyPool;
-    jsonlite_token_pool stringPool;
-    jsonlite_token_pool numberPool;
+    jsonlite_token_pool pools[3];
+    uint8_t pools_mem[jsonlite_token_pool_estimate_size(3)];
+    
     id object;
     Class rootClass;
     NSMutableArray *bindingStack;

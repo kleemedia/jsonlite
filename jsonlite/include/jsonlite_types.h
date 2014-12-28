@@ -1,5 +1,5 @@
 //
-//  Copyright 2012-2013, Andrii Mamchur
+//  Copyright 2012-2014, Andrii Mamchur
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ typedef enum {
     jsonlite_result_ok,
     jsonlite_result_end_of_stream,
     jsonlite_result_depth_limit,
-    jsonlite_result_invalid_argument,
     jsonlite_result_expected_object_or_array,
     jsonlite_result_expected_value,
     jsonlite_result_expected_key_or_end,
@@ -34,7 +33,8 @@ typedef enum {
     jsonlite_result_invalid_utf8,
     jsonlite_result_suspended,    
     
-    jsonlite_result_not_allowed
+    jsonlite_result_not_allowed,
+    jsonlite_result_out_of_memory,
 } jsonlite_result;
 
 

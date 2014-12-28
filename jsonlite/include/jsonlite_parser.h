@@ -1,5 +1,5 @@
 //
-//  Copyright 2012-2013, Andrii Mamchur
+//  Copyright 2012-2014, Andrii Mamchur
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 #ifndef JSONLITE_PARSER_H
 #define JSONLITE_PARSER_H
 
-#include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
 #include "jsonlite_token.h"
 #include "jsonlite_types.h"
+#include "jsonlite_buffer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -106,34 +106,31 @@ extern "C" {
         jsonlite_callback_context context;
     } jsonlite_parser_callbacks;
 
-    /** @brief Estimates memory usage.
-     * @note
-     * This value depends on CPU architectures.
-     * @param depth the parsing depth.
-     * @return Estimated size in bytes.
-     */
-    size_t jsonlite_parser_estimate_size(size_t depth);
-
-    /** @brief Creates and initializes new instance of parser object.
-     *
-     * You should release jsonlite_parser object using ::jsonlite_parser_release.
-     * @see jsonlite_parser
-     * @see jsonlite_parser_release
-     * @param depth the parsing depth.
-     * @return jsonlite_parser object.
-     */
-    jsonlite_parser jsonlite_parser_init(size_t depth);
+    typedef uint8_t parse_state;
+    struct jsonlite_parser_struct {
+        const uint8_t *cursor;
+        const uint8_t *limit;
+        const uint8_t *buffer;
+        
+        jsonlite_buffer rest_buffer;
+        
+        parse_state *current;
+        parse_state *last;
+        parse_state **control;
+        
+        jsonlite_result result;
+        jsonlite_parser_callbacks callbacks;
+    } jsonlite_parser_struct;
     
     /** @brief Initializes memory for parser object.
      *
-     * You should release internal resources using ::jsonlite_parser_cleanup
      * @see jsonlite_parser
      * @see jsonlite_parser_reset
      * @param memory the memory for parser.
      * @param size the memory size.
      * @return jsonlite_parser object.
      */
-    jsonlite_parser jsonlite_parser_init_memory(void *memory, size_t size);
+    jsonlite_parser jsonlite_parser_init(void *memory, size_t size, jsonlite_buffer rest_buffer);
     
     /** \brief Copies provided callbacks structure to parser object.
      * @see jsonlite_parser
@@ -141,15 +138,14 @@ extern "C" {
      * @see jsonlite_result
      * @param parser the parser object.
      * @param parser the callbacks object.
-     * @return jsonlite_result_invalid_argument when parser or cbs are NULL; otherwise jsonlite_result_ok.
      */
-    jsonlite_result jsonlite_parser_set_callback(jsonlite_parser parser, const jsonlite_parser_callbacks *cbs);
+    void jsonlite_parser_set_callback(jsonlite_parser parser, const jsonlite_parser_callbacks *cbs);
     
     /** \brief Returns result of last operation.
      * @see jsonlite_parser
      * @see jsonlite_result
      * @param parser the parser object.
-     * @return jsonlite_result_invalid_argument when parser is NULL; otherwise s result of last operation.
+     * @return Result of last operation.
      */
     jsonlite_result jsonlite_parser_get_result(jsonlite_parser parser);
     
@@ -161,31 +157,7 @@ extern "C" {
      * @param parser the parser object.
      * @param buffer the pointer to JSON payload buffer.
      * @param size the JSON payload buffer size.
-     * @return JSON parsing result or jsonlite_result_invalid_argument when some parameter is invalid.
-     * 
-     * There is an example of JSON validation
-     * @code{.c}
-     * char json[] = "{\"key\" : 12345, \"obj\": {}, \"array\":[null, true, false, \"string\"]}";
-     * jsonlite_parser p = jsonlite_parser_init(16);
-     * jsonlite_result result = jsonlite_parser_tokenize(p, json, sizeof(json));
-     * assert(result == jsonlite_result_ok);
-     * jsonlite_parser_release(p);
-     * @endcode
-     *
-     * There is an another example of JSON chunk parsing.
-     * @code{.c}
-     * char chunk1[] = "{\"key\" : 12345, \"obj\": {}, \"arr";
-     * char chunk2[] = "ay\":[null, true, false, \"string\"]}";
-     * jsonlite_parser p = jsonlite_parser_init(16);
-     *
-     * jsonlite_result result = jsonlite_parser_tokenize(p, chunk1, sizeof(chunk1) - 1);
-     * assert(result == jsonlite_result_end_of_stream);
-     * // Now you can release or reuse chunk1 buffer.
-     *
-     * result = jsonlite_parser_tokenize(p, chunk2, sizeof(chunk2) - 1);
-     * assert(result == jsonlite_result_ok);
-     *
-     * jsonlite_parser_release(p);
+     * @return JSON parsing result.
      * @endcode
      */
     jsonlite_result jsonlite_parser_tokenize(jsonlite_parser parser, const void *buffer, size_t size);
@@ -194,7 +166,7 @@ extern "C" {
      * @see jsonlite_parser
      * @see jsonlite_result
      * @param parser the parser object.
-     * @return JSON parsing result or jsonlite_result_invalid_argument when parser is NULL.
+     * @return JSON parsing result.
      */
     jsonlite_result jsonlite_parser_resume(jsonlite_parser parser);
     
@@ -204,8 +176,7 @@ extern "C" {
      * @see jsonlite_parser
      * @see jsonlite_result
      * @param parser the parser object.
-     * @return jsonlite_result_invalid_argument when parser is NULL; 
-     * jsonlite_result_not_allowed when operation is not allowed;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_parser_suspend(jsonlite_parser parser);
@@ -215,27 +186,11 @@ extern "C" {
      * @see jsonlite_parser
      * @see jsonlite_result
      * @param parser the parser object.
-     * @return jsonlite_result_invalid_argument when parser is NULL or result is jsonlite_result_unknown;
+     * @return jsonlite_result_not_allowed when operation is not allowed;
      * otherwise jsonlite_result_ok.
      */
     jsonlite_result jsonlite_parser_terminate(jsonlite_parser parser, jsonlite_result result);
     
-    /** \brief Releases parser object.
-     *
-     * If parser is NULL, jsonlite_parser_release does nothing.
-     * @see jsonlite_parser
-     * @param parser the parser object.
-     */
-    void jsonlite_parser_release(jsonlite_parser parser);
-    
-    /** \brief Releases internal resources and states.
-     *
-     * If parser is NULL, jsonlite_parser_reset does nothing.
-     * @see jsonlite_parser
-     * @param parser the parser object.
-     */
-    void jsonlite_parser_cleanup(jsonlite_parser parser);
-
     /** \brief jsonlite_parser_callbacks structure initialized with callbacks that do nothing.
      */
     extern const jsonlite_parser_callbacks jsonlite_default_callbacks;
@@ -243,5 +198,7 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+#define jsonlite_parser_estimate_size(depth) (sizeof(jsonlite_parser_struct) + (depth) * sizeof(parse_state))
 
 #endif

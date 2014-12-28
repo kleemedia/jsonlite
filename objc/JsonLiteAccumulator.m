@@ -1,4 +1,4 @@
-//  Copyright 2012-2013, Andrii Mamchur
+//  Copyright 2012-2014, Andrii Mamchur
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,13 +14,19 @@
 
 #import "JsonLiteAccumulator.h"
 #import "JsonLiteCollections.h"
-#import "jsonlite.h"
 
 #define CHECK_CAPACITY() if (keys + capacity < current->keys + current->length + 1) [self extendCapacity]
 
+enum {
+    PoolKeys,
+    PoolStrings,
+    PoolNumbers,
+    PoolCount
+};
+
 typedef struct JsonLiteAccumulatorState {
-    id *keys;
-    id *values;
+    id __unsafe_unretained *keys;
+    id __unsafe_unretained *values;
     CFHashCode *hashes;
     size_t length;
     size_t capacity;
@@ -54,9 +60,7 @@ static void ReleaseKeyValues(JsonLiteAccumulatorState *s) {
 - (id)initWithDepth:(NSUInteger)aDepth {
     self = [super init];
     if (self != nil) {
-        keyPool = jsonlite_token_pool_create((jsonlite_token_pool_release_value_fn)CFRelease);
-        stringPool = jsonlite_token_pool_create((jsonlite_token_pool_release_value_fn)CFRelease);
-        numberPool = jsonlite_token_pool_create((jsonlite_token_pool_release_value_fn)CFRelease);
+        jsonlite_token_pool_init_memory(pools_mem, sizeof(pools_mem), pools);
         capacity = 0x100;
         
         id *buffer = calloc(2 * capacity, sizeof(id));
@@ -87,11 +91,7 @@ static void ReleaseKeyValues(JsonLiteAccumulatorState *s) {
 
 - (void)dealloc {  
     [self reset];
-
-    jsonlite_token_pool_release(keyPool);
-    jsonlite_token_pool_release(stringPool);
-    jsonlite_token_pool_release(numberPool);
-    
+   
     free(values);
     free(state);
     free(hashes);
@@ -118,14 +118,15 @@ static void ReleaseKeyValues(JsonLiteAccumulatorState *s) {
     }
     
     current = state;
+    jsonlite_token_pool_cleanup(pools, PoolCount, (jsonlite_token_pool_release_value_fn)CFRelease);
 }
 
 - (void)extendCapacity {
     size_t newCapacity = capacity * 2;    
     CFHashCode *newHashes = malloc(newCapacity * sizeof(CFHashCode));
     id *buffer = calloc(2 * newCapacity, sizeof(id));
-    id *newValues = buffer;
-    id *newKeys = buffer + newCapacity;
+    id __unsafe_unretained *newValues = buffer;
+    id __unsafe_unretained *newKeys = buffer + newCapacity;
     
     memcpy(newValues, values, capacity * sizeof(id)); // LCOV_EXCL_LINE
     memcpy(newKeys, keys, capacity * sizeof(id)); // LCOV_EXCL_LINE
@@ -168,9 +169,9 @@ static void ReleaseKeyValues(JsonLiteAccumulatorState *s) {
 
 - (void)parser:(JsonLiteParser *)parser didFinishParsingWithError:(NSError *)error {
     if ([error code] == JsonLiteCodeEndOfStream) {
-        jsonlite_token_pool_copy_tokens(keyPool);
-        jsonlite_token_pool_copy_tokens(stringPool);
-        jsonlite_token_pool_copy_tokens(numberPool);
+        jsonlite_token_pool_copy_tokens(pools[PoolKeys]);
+        jsonlite_token_pool_copy_tokens(pools[PoolStrings]);
+        jsonlite_token_pool_copy_tokens(pools[PoolNumbers]);
     }
 }
 
@@ -179,7 +180,7 @@ static void ReleaseKeyValues(JsonLiteAccumulatorState *s) {
 }
 
 - (void)parserDidEndObject:(JsonLiteParser *)parser {
-    NSDictionary *d = JsonLiteCreateDictionary(current->values,
+    NSDictionary *d = CreateJsonLiteDictionary(current->values,
                                                current->keys,
                                                current->hashes,
                                                current->length);
@@ -198,7 +199,7 @@ static void ReleaseKeyValues(JsonLiteAccumulatorState *s) {
 }
 
 - (void)parserDidEndArray:(JsonLiteParser *)parser {
-    NSArray *a = JsonLiteCreateArray(current->values, current->length);
+    NSArray *a = CreateJsonLiteArray(current->values, current->length);
     JsonLiteAccumulatorState *prev = current - 1;
     prev->values[prev->length++] = a;
     
@@ -225,7 +226,7 @@ static void ReleaseKeyValues(JsonLiteAccumulatorState *s) {
 }
 
 - (void)parser:(JsonLiteParser *)parser foundKeyToken:(JsonLiteStringToken *)token {
-    jsonlite_token_bucket *item = jsonlite_token_pool_get_bucket(keyPool, (jsonlite_token *)token);
+    jsonlite_token_bucket *item = jsonlite_token_pool_get_bucket(pools[PoolKeys], (jsonlite_token *)token);
     if (item->value == nil) {
         item->value = [token copyValue];
         item->value_hash = CFHash((CFTypeRef)item->value);
@@ -237,7 +238,7 @@ static void ReleaseKeyValues(JsonLiteAccumulatorState *s) {
 }
 
 - (void)parser:(JsonLiteParser *)parser foundStringToken:(JsonLiteStringToken *)token {
-    jsonlite_token_bucket *item = jsonlite_token_pool_get_bucket(stringPool, (jsonlite_token *)token);
+    jsonlite_token_bucket *item = jsonlite_token_pool_get_bucket(pools[PoolStrings], (jsonlite_token *)token);
     if (item->value == nil) {
         item->value = [token copyValue];
     }
@@ -247,24 +248,13 @@ static void ReleaseKeyValues(JsonLiteAccumulatorState *s) {
 }
 
 - (void)parser:(JsonLiteParser *)parser foundNumberToken:(JsonLiteNumberToken *)token {
-    jsonlite_token_bucket *item = jsonlite_token_pool_get_bucket(numberPool, (jsonlite_token *)token);
+    jsonlite_token_bucket *item = jsonlite_token_pool_get_bucket(pools[PoolNumbers], (jsonlite_token *)token);
     if (item->value == nil) {
         item->value = [token copyValue];
     }
     
     CHECK_CAPACITY();
     current->values[current->length++] = (id)CFRetain((CFTypeRef)item->value);
-}
-
-+ (id)objectFromData:(NSData *)data withMaxDepth:(NSUInteger)maxDepth {
-    JsonLiteParser *parser = [[JsonLiteParser alloc] initWithDepth:maxDepth];
-    JsonLiteAccumulator *acc = [[JsonLiteAccumulator alloc] initWithDepth:maxDepth];
-    parser.delegate = acc;
-    BOOL success = [parser parse:data];
-    id obj = success ? [acc object] : nil;
-    [acc release];
-    [parser release];
-    return obj;
 }
 
 @end

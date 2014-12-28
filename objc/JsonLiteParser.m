@@ -1,4 +1,4 @@
-//  Copyright 2012-2013, Andrii Mamchur
+//  Copyright 2012-2014, Andrii Mamchur
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -18,19 +18,9 @@
 
 typedef struct JsonLiteInternal {
     jsonlite_parser parser;
-    void *parserObj;
-    void *delegate;
-    IMP parseFinished;
-    IMP objectStart;
-    IMP objectEnd;
-    IMP arrayStart;
-    IMP arrayEnd;
-    IMP trueFound;
-    IMP falseFound;
-    IMP nullFound;
-    IMP keyFound;
-    IMP stringFound;
-    IMP numberFound;    
+    jsonlite_buffer buffer;
+    JsonLiteParser *parserObj;
+    id<JsonLiteParserDelegate> delegate;
 } JsonLiteInternal;
 
 static void parse_finish(jsonlite_callback_context *ctx);
@@ -100,8 +90,8 @@ static Class class_JsonLiteNumberToken;
 @implementation JsonLiteStringToken 
 
 - (NSString *)allocEscapedString:(jsonlite_token *)token {
-    void *buffer = NULL;
-    size_t size = jsonlite_token_to_uft16(token, (uint16_t **)&buffer);
+    uint16_t *buffer = malloc(jsonlite_token_size_of_uft16(token));
+    size_t size = jsonlite_token_to_uft16(token, buffer);
     NSString *str = (NSString *)CFStringCreateWithBytesNoCopy(NULL, 
                                                               (const UInt8 *)buffer,
                                                               size,
@@ -160,9 +150,10 @@ static Class class_JsonLiteNumberToken;
 
 - (NSData *)copyBase64Data {
     jsonlite_token *token = (jsonlite_token *)self;
-    void *buffer = NULL;
-    size_t size = jsonlite_token_base64_to_binary(token, &buffer);
-    if (buffer == NULL) {
+    void *buffer = malloc(jsonlite_token_size_of_base64_binary(token));
+    size_t size = jsonlite_token_base64_to_binary(token, buffer);
+    if (size == 0) {
+        free(buffer);
         return nil;
     }
     
@@ -237,8 +228,12 @@ static Class class_JsonLiteNumberToken;
     self = [super init];
     if (self != nil) {        
         depth = aDepth < 2 ? 16 : aDepth;
-        internal = malloc(sizeof(JsonLiteInternal) + jsonlite_parser_estimate_size(depth));
+        size_t size = sizeof(JsonLiteInternal);
+        size += jsonlite_parser_estimate_size(depth);
+        size += jsonlite_heap_buffer_size();
+        internal = malloc(size);
         internal->parser = NULL;
+        internal->buffer = NULL;
     }
     return self;
 }
@@ -259,7 +254,7 @@ static Class class_JsonLiteNumberToken;
     self.parseError = nil;
     self.stream = nil;
     self.runLoop = nil;
-    jsonlite_parser_cleanup(internal->parser);
+    jsonlite_heap_buffer_cleanup(internal->buffer);
     free(internal);
     [super dealloc];
 }
@@ -272,9 +267,11 @@ static Class class_JsonLiteNumberToken;
     
     jsonlite_parser jp = internal->parser;
     if (jp == NULL) {
-        void *memory = (uint8_t *)internal + sizeof(JsonLiteInternal);
         size_t size = jsonlite_parser_estimate_size(depth);
-        jp = jsonlite_parser_init_memory(memory, size);
+        void *parserMemory = (uint8_t *)internal + sizeof(JsonLiteInternal);
+        void *bufferMemory = (uint8_t *)parserMemory + size;
+        jsonlite_buffer buffer = jsonlite_heap_buffer_init(bufferMemory);
+        jp = jsonlite_parser_init(parserMemory, size, buffer);
         internal->parser = jp;
         if (delegate != nil) {
             jsonlite_parser_callbacks cbs = JsonLiteParserCallbacks;
@@ -293,7 +290,7 @@ static Class class_JsonLiteNumberToken;
     return [self parse:[data bytes] length:[data length]];
 }
 
-- (void)stream:(NSInputStream *)aStream handleEvent:(NSStreamEvent)eventCode {
+- (void)stream:(NSStream *)aStream handleEvent:(NSStreamEvent)eventCode {
     uint8_t data[4096];
     NSInteger read;
     switch (eventCode) {
@@ -357,7 +354,8 @@ static Class class_JsonLiteNumberToken;
     self.stream = nil;
     self.runLoop = nil;
     
-    jsonlite_parser_cleanup(internal->parser);
+    jsonlite_heap_buffer_cleanup(internal->buffer);
+    internal->buffer = NULL;
     internal->parser = NULL;
 }
 
@@ -369,19 +367,6 @@ static Class class_JsonLiteNumberToken;
     
     internal->parserObj = self;
     internal->delegate = delegate;
-    
-    Class cls = [delegate class];
-    internal->parseFinished = class_getMethodImplementation(cls, @selector(parser:didFinishParsingWithError:));
-    internal->objectStart = class_getMethodImplementation(cls, @selector(parserDidStartObject:));
-    internal->objectEnd = class_getMethodImplementation(cls, @selector(parserDidEndObject:));
-    internal->arrayStart = class_getMethodImplementation(cls, @selector(parserDidStartArray:));
-    internal->arrayEnd = class_getMethodImplementation(cls, @selector(parserDidEndArray:));
-    internal->trueFound = class_getMethodImplementation(cls, @selector(parserFoundTrueToken:));
-    internal->falseFound = class_getMethodImplementation(cls, @selector(parserFoundFalseToken:));
-    internal->nullFound = class_getMethodImplementation(cls, @selector(parserFoundNullToken:));
-    internal->keyFound = class_getMethodImplementation(cls, @selector(parser:foundKeyToken:));
-    internal->stringFound = class_getMethodImplementation(cls, @selector(parser:foundStringToken:));
-    internal->numberFound = class_getMethodImplementation(cls, @selector(parser:foundNumberToken:));
 }
 
 + (NSError *)errorForCode:(JsonLiteCode)error {
@@ -451,58 +436,65 @@ static void parse_finish(jsonlite_callback_context *ctx) {
     JsonLiteParser *p = (JsonLiteParser *)jli->parserObj;
     NSError *error = [JsonLiteParser errorForCode:(JsonLiteCode)res];
     p.parseError = error;
-    jli->parseFinished(jli->delegate, @selector(parser:didFinishParsingWithError:), jli->parserObj, error);
+    [jli->delegate parser:jli->parserObj didFinishParsingWithError:error];
 }
 
 static void object_start_callback(jsonlite_callback_context *ctx) {
     JsonLiteInternal *jli = (JsonLiteInternal *)ctx->client_state;
-    jli->objectStart(jli->delegate, @selector(parserDidStartObject:), jli->parserObj);
+    [jli->delegate parserDidStartObject:jli->parserObj];
 }
 
 static void object_end_callback(jsonlite_callback_context *ctx) {
     JsonLiteInternal *jli = (JsonLiteInternal *)ctx->client_state;
-    jli->objectEnd(jli->delegate, @selector(parserDidEndObject:), jli->parserObj);
+    [jli->delegate parserDidEndObject:jli->parserObj];
 }
 
 static void array_start_callback(jsonlite_callback_context *ctx) {
     JsonLiteInternal *jli = (JsonLiteInternal *)ctx->client_state;
-    jli->arrayStart(jli->delegate, @selector(parserDidStartArray:), jli->parserObj);
+    [jli->delegate parserDidStartArray:jli->parserObj];
 }
 
 static void array_end_callback(jsonlite_callback_context *ctx) {
     JsonLiteInternal *jli = (JsonLiteInternal *)ctx->client_state;
-    jli->arrayEnd(jli->delegate, @selector(parserDidEndArray:), jli->parserObj);
+    [jli->delegate parserDidEndArray:jli->parserObj];
 }
 
 static void true_found_callback(jsonlite_callback_context *ctx) {
     JsonLiteInternal *jli = (JsonLiteInternal *)ctx->client_state;
-    jli->trueFound(jli->delegate, @selector(parserFoundTrueToken:), jli->parserObj);
+    [jli->delegate parserFoundTrueToken:jli->parserObj];
 }
 
 static void false_found_callback(jsonlite_callback_context *ctx) {
     JsonLiteInternal *jli = (JsonLiteInternal *)ctx->client_state;
-    jli->falseFound(jli->delegate, @selector(parserFoundFalseToken:), jli->parserObj);
+    [jli->delegate parserFoundFalseToken:jli->parserObj];
 }
 
 static void null_found_callback(jsonlite_callback_context *ctx) {
     JsonLiteInternal *jli = (JsonLiteInternal *)ctx->client_state;
-    jli->nullFound(jli->delegate, @selector(parserFoundNullToken:), jli->parserObj);
+    [jli->delegate parserFoundNullToken:jli->parserObj];
 }
 
 static void key_found_callback(jsonlite_callback_context *ctx, jsonlite_token *token) {
     JsonLiteInternal *jli = (JsonLiteInternal *)ctx->client_state;
-    token->ext = class_JsonLiteStringToken;
-    jli->keyFound(jli->delegate, @selector(parser:foundKeyToken:), jli->parserObj, token);
+    object_setClass((id)token, class_JsonLiteStringToken);
+    
+    JsonLiteStringToken *k_token = (JsonLiteStringToken *)token;
+    [jli->delegate parser:jli->parserObj foundKeyToken:k_token];
 }
 
 static void string_found_callback(jsonlite_callback_context *ctx, jsonlite_token *token) {
     JsonLiteInternal *jli = (JsonLiteInternal *)ctx->client_state;
-    token->ext = class_JsonLiteStringToken;
-    jli->stringFound(jli->delegate, @selector(parser:foundStringToken:), jli->parserObj, token);
+    object_setClass((id)token, class_JsonLiteStringToken);
+    
+    JsonLiteStringToken *s_token = (JsonLiteStringToken *)token;
+    [jli->delegate parser:jli->parserObj foundStringToken:s_token];
 }
 
 static void number_found_callback(jsonlite_callback_context *ctx, jsonlite_token *token) {
     JsonLiteInternal *jli = (JsonLiteInternal *)ctx->client_state;
-    token->ext = class_JsonLiteNumberToken;
-    jli->numberFound(jli->delegate, @selector(parser:foundNumberToken:), jli->parserObj, token);
+    object_setClass((id)token, class_JsonLiteNumberToken);
+    
+    JsonLiteNumberToken *n_token = (JsonLiteNumberToken *)token;
+    [jli->delegate parser:jli->parserObj foundNumberToken:n_token];
 }
+
