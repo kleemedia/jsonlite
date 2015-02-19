@@ -94,13 +94,13 @@ const jsonlite_parser_callbacks jsonlite_default_callbacks = {
 };
 
 static jsonlite_parser jsonlite_parser_configure(void *memory, size_t size, jsonlite_buffer rest_buffer) {
-    size_t depth = (size - sizeof(jsonlite_parser_struct)) / sizeof(parse_state);
+    size_t depth = (size - sizeof(struct jsonlite_parser_struct)) / sizeof(parse_state);
     jsonlite_parser parser = (jsonlite_parser)memory;
     parser->result = jsonlite_result_unknown;
     parser->rest_buffer = rest_buffer;
     parser->callbacks = jsonlite_default_callbacks;
     parser->control = NULL;
-    parser->current = ((uint8_t *)parser + sizeof(jsonlite_parser_struct));
+    parser->current = ((uint8_t *)parser + sizeof(struct jsonlite_parser_struct));
     parser->current[0] = state_end;
     parser->current[1] = state_start;
     parser->last = parser->current + depth;

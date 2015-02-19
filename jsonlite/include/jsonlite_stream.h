@@ -30,7 +30,7 @@ extern "C" {
 
     struct jsonlite_stream_struct {
         jsonlite_stream_write_fn write;
-    } jsonlite_stream_struct;
+    };
     
     int jsonlite_stream_write(jsonlite_stream stream, const void *data, size_t length);
     
@@ -39,7 +39,7 @@ extern "C" {
         uint8_t *data;
     } jsonlite_mem_stream_block;
     
-    typedef struct jsonlite_mem_stream {
+    typedef struct {
         size_t block_size;
         uint8_t *cursor;
         uint8_t *limit;
@@ -51,7 +51,7 @@ extern "C" {
     void jsonlite_mem_stream_free(jsonlite_stream stream);
     size_t jsonlite_mem_stream_data(jsonlite_stream stream, uint8_t **data, size_t extra_bytes);
     
-    typedef struct jsonlite_static_mem_stream {
+    typedef struct {
         uint8_t *buffer;
         size_t size;
         size_t written;

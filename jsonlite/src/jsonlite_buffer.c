@@ -75,9 +75,9 @@ jsonlite_buffer jsonlite_static_buffer_init(void *mem, size_t size) {
     struct jsonlite_buffer_struct *buffer = (struct jsonlite_buffer_struct *)mem;
     buffer->set_mem = &jsonlite_static_buffer_set_mem;
     buffer->append_mem = &jsonlite_static_buffer_append_mem;
-    buffer->mem = (uint8_t *)mem + sizeof(jsonlite_buffer_struct);
+    buffer->mem = (uint8_t *)mem + sizeof(struct jsonlite_buffer_struct);
     buffer->size = 0;
-    buffer->capacity = size - sizeof(jsonlite_buffer_struct);
+    buffer->capacity = size - sizeof(struct jsonlite_buffer_struct);
     return buffer;
 }
 

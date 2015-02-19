@@ -34,7 +34,7 @@ extern "C" {
         
         jsonlite_buffer_mem_fn set_mem;
         jsonlite_buffer_mem_fn append_mem;
-    } jsonlite_buffer_struct;
+    };
     
     int jsonlite_buffer_set_mem(jsonlite_buffer buffer, const void *data, size_t length);
     int jsonlite_buffer_append_mem(jsonlite_buffer buffer, const void *data, size_t length);

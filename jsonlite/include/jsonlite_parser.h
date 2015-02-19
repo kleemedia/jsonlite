@@ -120,7 +120,7 @@ extern "C" {
         
         jsonlite_result result;
         jsonlite_parser_callbacks callbacks;
-    } jsonlite_parser_struct;
+    };
     
     /** @brief Initializes memory for parser object.
      *
@@ -199,6 +199,6 @@ extern "C" {
 }
 #endif
 
-#define jsonlite_parser_estimate_size(depth) (sizeof(jsonlite_parser_struct) + (depth) * sizeof(parse_state))
+#define jsonlite_parser_estimate_size(depth) (sizeof(struct jsonlite_parser_struct) + (depth) * sizeof(parse_state))
 
 #endif
