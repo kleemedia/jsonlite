@@ -407,7 +407,7 @@
 		B5A2EAB1186024A400293619 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0510;
+				LastUpgradeCheck = 0700;
 				ORGANIZATIONNAME = "Andrii Mamchur";
 			};
 			buildConfigurationList = B5A2EAB4186024A400293619 /* Build configuration list for PBXProject "JsonLiteObjC" */;
@@ -639,6 +639,7 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = "JsonLiteObjCTests/JsonLiteObjCTests-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "net.mamchur.andrii.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = xctest;
 			};
@@ -658,6 +659,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "JsonLiteObjC/JsonLiteObjC-Prefix.pch";
 				INFOPLIST_FILE = "JsonLiteObjCTests/JsonLiteObjCTests-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "net.mamchur.andrii.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = xctest;
 			};
