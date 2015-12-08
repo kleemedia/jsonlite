@@ -7,14 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A0036211C15FB3B00579957 /* jsonlite.h in Headers */ = {isa = PBXBuildFile; fileRef = B5A2EAE4186025D800293619 /* jsonlite.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		0A0036221C15FB3B00579957 /* jsonlite_buffer.h in Headers */ = {isa = PBXBuildFile; fileRef = B52C01E6189CFBAD00A7F7AC /* jsonlite_buffer.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		0A0036231C15FB3B00579957 /* jsonlite_builder.h in Headers */ = {isa = PBXBuildFile; fileRef = B5A2EAE5186025D800293619 /* jsonlite_builder.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		0A0036241C15FB3B00579957 /* jsonlite_parser.h in Headers */ = {isa = PBXBuildFile; fileRef = B5A2EAE6186025D800293619 /* jsonlite_parser.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		0A0036251C15FB3B00579957 /* jsonlite_stream.h in Headers */ = {isa = PBXBuildFile; fileRef = B5A2EAE7186025D800293619 /* jsonlite_stream.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		0A0036261C15FB3B00579957 /* jsonlite_token.h in Headers */ = {isa = PBXBuildFile; fileRef = B5A2EAE8186025D800293619 /* jsonlite_token.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		0A0036271C15FB3B00579957 /* jsonlite_token_pool.h in Headers */ = {isa = PBXBuildFile; fileRef = B5A2EAE9186025D800293619 /* jsonlite_token_pool.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		0A0036281C15FB3B00579957 /* jsonlite_types.h in Headers */ = {isa = PBXBuildFile; fileRef = B5A2EAEA186025D800293619 /* jsonlite_types.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0A0036291C15FB4200579957 /* jsonlite.c in Sources */ = {isa = PBXBuildFile; fileRef = B5A2EAEC186025D800293619 /* jsonlite.c */; };
 		0A00362A1C15FB4200579957 /* jsonlite_buffer.c in Sources */ = {isa = PBXBuildFile; fileRef = B52C01E7189CFBBC00A7F7AC /* jsonlite_buffer.c */; };
 		0A00362B1C15FB4200579957 /* jsonlite_builder.c in Sources */ = {isa = PBXBuildFile; fileRef = B5A2EAED186025D800293619 /* jsonlite_builder.c */; };
@@ -394,14 +386,6 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0A0036251C15FB3B00579957 /* jsonlite_stream.h in Headers */,
-				0A0036221C15FB3B00579957 /* jsonlite_buffer.h in Headers */,
-				0A0036281C15FB3B00579957 /* jsonlite_types.h in Headers */,
-				0A0036211C15FB3B00579957 /* jsonlite.h in Headers */,
-				0A0036231C15FB3B00579957 /* jsonlite_builder.h in Headers */,
-				0A0036261C15FB3B00579957 /* jsonlite_token.h in Headers */,
-				0A0036271C15FB3B00579957 /* jsonlite_token_pool.h in Headers */,
-				0A0036241C15FB3B00579957 /* jsonlite_parser.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -795,6 +779,7 @@
 				0A00361F1C15FB1900579957 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		B5A2EAB4186024A400293619 /* Build configuration list for PBXProject "JsonLiteObjC" */ = {
 			isa = XCConfigurationList;
