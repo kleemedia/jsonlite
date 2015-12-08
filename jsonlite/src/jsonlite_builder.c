@@ -17,6 +17,10 @@
 #include "../include/jsonlite_builder.h"
 #endif
 
+#ifdef _WIN32
+#pragma warning(disable:4996)
+#endif
+
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
@@ -428,7 +432,7 @@ static void jsonlite_builder_write_base64(jsonlite_builder builder, const void *
     static const char encode[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     char buffer[5] = {0};
     const uint8_t *c = data;
-    const uint8_t *l = data + length;
+	const uint8_t *l = (const uint8_t *)data + length;
     uint32_t bits;
     jsonlite_stream_write(builder->stream, "\"", 1);
 next:
