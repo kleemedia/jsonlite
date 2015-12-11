@@ -28,11 +28,15 @@ add_library(jsonlite STATIC
 	${SOURCE}
 )
 
-target_include_directories(jsonlite PUBLIC
-	${HEADER_DIR}
-)
+target_include_directories(jsonlite PUBLIC ${HEADER_DIR})
+
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    # Linux specific code
+    target_compile_options(jsonlite PUBLIC -fPIC)
+ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 install(FILES
     ${HEADER}
 	DESTINATION ${CMAKE_BINARY_DIR}/include
 )
+
