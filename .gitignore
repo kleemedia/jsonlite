@@ -17,6 +17,7 @@ bin
 gen
 obj
 out
+build
 
 # Compiled Object files
 *.slo
