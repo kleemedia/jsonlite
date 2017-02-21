@@ -357,7 +357,7 @@ static void jsonlite_builder_raw(jsonlite_builder builder, const void *data, siz
 }
 
 static void jsonlite_builder_repeat(jsonlite_builder builder, const char ch, size_t count) {
-    ptrdiff_t i = 0;
+	size_t i = 0;
     for (; i < count; i++) {
         jsonlite_stream_write(builder->stream, &ch, 1);
     }
