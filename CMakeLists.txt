@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.22)
 
 set(SRC_DIR jsonlite/src)
 set(HEADER_DIR jsonlite/include)
